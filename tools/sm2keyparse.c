@@ -14,7 +14,8 @@
 #include <stdlib.h>
 #include <gmssl/mem.h>
 #include <gmssl/sm2.h>
-
+#include <gmssl/base64.h>
+#define SM2_PRIVATE_KEY_INFO_DER_SIZE 150
 
 static const char *usage = "-in private.pem -pass pass / -pubin public.pem";
 
@@ -36,6 +37,9 @@ int sm2keyparse_main(int argc, char **argv)
 	FILE *pubinfp = NULL;
     FILE *infp = NULL;
 	SM2_KEY key;
+	uint8_t pkey_info[SM2_PRIVATE_KEY_INFO_DER_SIZE];
+	uint8_t *p = pkey_info;
+	size_t pkey_info_len = 0;
 
 	argc--;
 	argv++;
@@ -90,14 +94,64 @@ bad:
 		fprintf(stderr, "%s: private key decryption failure\n", prog);
 		goto end;
 	} else {
-        printf("\n");
-        for(int i=0;i<4;i++){
-            for(int j=0;j<8;j++){
-                printf("%02x ",key.private_key[i*8+j]);
-            }
-            printf("\n");
+        printf("\nPrivate key: ");
+        for(int i=0;i<32;i++){
+           // for(int j=0;j<8;j++){
+                printf("%02x",key.private_key[i]);
+          //  }
+           // printf("\n");
         }
         printf("\n");
+
+		if (sm2_private_key_info_to_der(&key, &p, &pkey_info_len) != 1) {
+		//error_print();
+		goto end;
+	}
+
+	printf("SM2 private_key der :\n");
+
+
+	for(int i=0;i<SM2_PRIVATE_KEY_INFO_DER_SIZE;i++){
+
+                printf("%02x",pkey_info[i]);
+   
+        }
+
+
+
+	BASE64_CTX ctx;
+	uint8_t* b64 = NULL;
+	int len;
+
+	if (!pkey_info) {
+		//error_print();
+		return -1;
+	}
+
+	// FIXME: use a fixed-size buffer
+	if (!(b64 = malloc(SM2_PRIVATE_KEY_INFO_DER_SIZE * 2))) {
+		//error_print();
+		return -1;
+	}
+
+	base64_encode_init(&ctx);
+	base64_encode_update(&ctx, pkey_info, (int)SM2_PRIVATE_KEY_INFO_DER_SIZE, b64, &len);
+	base64_encode_finish(&ctx, b64 + len, &len);
+
+
+
+	printf("\n\n\n");
+
+	printf("-----BEGIN EC PARAMETERS-----\n");
+	printf("BggqgRzPVQGCLQ==\n");
+	printf("-----END EC PARAMETERS-----\n");
+	printf("-----BEGIN EC PRIVATE KEY-----\n");
+	printf("%s", (char *)b64);
+	printf("-----END EC PRIVATE KEY-----\n");
+
+	free(b64);
+
+
     }
 
     if(pubinfile){
@@ -106,21 +160,21 @@ pubkey:
                 fprintf(stderr, "%s: parse public key failed\n", prog);
                 goto end;
         } else {
-            printf("\nx:\n");
-            for(int i=0;i<4;i++){
-                for(int j=0;j<8;j++){
-                    printf("%02x ",key.public_key.x[i*8+j]);
-                }
-                printf("\n");
+            printf("\npublic key hex: ");
+            for(int i=0;i<32;i++){
+               // for(int j=0;j<8;j++){
+                    printf("%02x",key.public_key.x[i]);
+             //   }
+              //  printf("\n");
             }
             printf("\n");
 
             printf("y:\n");
-            for(int i=0;i<4;i++){
-                for(int j=0;j<8;j++){
-                    printf("%02x ",key.public_key.y[i*8+j]);
-                }
-                printf("\n");
+            for(int i=0;i<32;i++){
+               // for(int j=0;j<8;j++){
+                    printf("%02x",key.public_key.y[i]);
+              //  }
+               // printf("\n");
             }
             printf("\n");
         }
