@@ -1,4 +1,4 @@
-﻿/*
+/*
  *  Copyright 2014-2022 The GmSSL Project. All Rights Reserved.
  *
  *  Licensed under the Apache License, Version 2.0 (the License); you may
@@ -567,6 +567,50 @@ int sm2_private_key_info_encrypt_to_der(const SM2_KEY *sm2_key, const char *pass
 		error_print();
 		goto end;
 	}
+
+	printf("SM2 private_key_der :\n");
+
+
+	for(int i=0;i<SM2_PRIVATE_KEY_INFO_DER_SIZE;i++){
+
+                printf("%02x",pkey_info[i]);
+   
+        }
+
+
+
+	BASE64_CTX ctx;
+	uint8_t* b64 = NULL;
+	int len;
+
+	if (!pkey_info) {
+		error_print();
+		return -1;
+	}
+
+	// FIXME: use a fixed-size buffer
+	if (!(b64 = malloc(SM2_PRIVATE_KEY_INFO_DER_SIZE * 2))) {
+		error_print();
+		return -1;
+	}
+
+	base64_encode_init(&ctx);
+	base64_encode_update(&ctx, pkey_info, (int)SM2_PRIVATE_KEY_INFO_DER_SIZE, b64, &len);
+	base64_encode_finish(&ctx, b64 + len, &len);
+
+
+
+	printf("\n\n\n");
+
+	printf("-----BEGIN EC PARAMETERS-----\n");
+	printf("BggqgRzPVQGCLQ==\n");
+	printf("-----END EC PARAMETERS-----\n");
+	printf("-----BEGIN EC PRIVATE KEY-----\n");
+	printf("%s", (char *)b64);
+	printf("-----END EC PRIVATE KEY-----\n");
+
+	free(b64);
+
 	/*
 	if (pkey_info_len != sizeof(pkey_info)) {
 		error_print();
@@ -640,6 +684,10 @@ int sm2_private_key_info_decrypt_from_der(SM2_KEY *sm2,
 		error_print();
 		goto end;
 	}
+    
+
+
+
 	ret = 1;
 end:
 	gmssl_secure_clear(&sm4_key, sizeof(sm4_key));
